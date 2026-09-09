@@ -711,6 +711,17 @@ class WritHerGraphRAG:
         self._storage_revision: str | None = None
         self.model_name = model_name
         self.embed_model = embed_model
+        # Configure LlamaIndex global settings to use Ollama models
+        Settings.llm = Ollama(
+            model=self.model_name,
+            base_url=OLLAMA_BASE_URL,
+            request_timeout=OLLAMA_TIMEOUT,
+        )
+        Settings.embed_model = OllamaEmbedding(
+            model_name=self.embed_model,
+            base_url=OLLAMA_BASE_URL,
+            request_timeout=OLLAMA_TIMEOUT,
+        )
         # Validate every managed generation before the first mkdir. The same
         # helper runs at import time and again here so patched/runtime paths
         # cannot bypass the source-vault safety invariant.
@@ -1115,6 +1126,7 @@ class WritHerGraphRAG:
                         self._retrievers_dirty = True
                         return
 
+                    _ensure_nest_asyncio()
                     reader = SimpleDirectoryReader(
                         input_files=[file_path], filename_as_id=True
                     )
@@ -1176,6 +1188,7 @@ class WritHerGraphRAG:
 
     def _build_index_unlocked(self):
         """Analyze files and build the graph."""
+        _ensure_nest_asyncio()
         safe_print(f"Scanning documents in '{KNOWLEDGE_DIR}'...")
 
         try:

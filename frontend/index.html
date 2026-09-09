@@ -5,12 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Kwipu — Second Brain</title>
     <link rel="stylesheet" href="/src/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   </head>
   <body>
     <aside id="panel">
       <header class="brand">
-        <h1>Kwipu</h1>
-        <span class="subtitle">Second Brain · 3D</span>
+        <div class="brand-row">
+          <div>
+            <h1>Kwipu</h1>
+            <span class="subtitle">Second Brain · 3D</span>
+          </div>
+          <button id="theme-toggle" class="theme-toggle" title="Toggle Light / Dark Mode" aria-label="Toggle theme">☀️</button>
+        </div>
       </header>
 
       <div id="stats" class="stats">loading…</div>
@@ -22,10 +28,18 @@
       </section>
 
       <section class="answer" id="answer-box" hidden>
-        <div class="answer-label">Answer</div>
+        <div class="answer-head">
+          <div class="answer-label">Answer</div>
+          <button id="copy-query-mermaid" class="link-btn" title="Copy active query subgraph as Mermaid diagram">export mermaid</button>
+        </div>
         <div id="answer" class="answer-text"></div>
         <div id="cited" class="cited"></div>
         <button id="clear-highlight" class="link-btn">clear focus</button>
+      </section>
+
+      <section class="controls">
+        <div class="group-label">Clusters & Categories</div>
+        <div id="legend-pills" class="legend-pills"></div>
       </section>
 
       <section class="controls">
@@ -51,7 +65,14 @@
       <div id="hover" class="hover"><div class="empty">hover a node…</div></div>
     </aside>
 
-    <main id="graph"></main>
+    <main id="graph">
+      <div class="graph-toolbar">
+        <button id="btn-zoom-in" class="tool-btn" title="Zoom In">+</button>
+        <button id="btn-zoom-out" class="tool-btn" title="Zoom Out">−</button>
+        <button id="btn-fit" class="tool-btn" title="Fit Entire Graph">⤢ Fit</button>
+        <button id="btn-reheat" class="tool-btn" title="Reheat / Relax Layout">⚡ Relax</button>
+      </div>
+    </main>
     <div class="scene-meta" id="scene-meta"></div>
 
     <section class="preview" id="preview" hidden>
@@ -60,10 +81,24 @@
           <div class="preview-label">Source</div>
           <div class="preview-title" id="preview-title"></div>
         </div>
-        <button class="preview-close" id="preview-close" aria-label="close">×</button>
+        <div class="preview-actions">
+          <button class="link-btn" id="preview-copy-mermaid" title="Copy document relationships as Mermaid" style="display:none;">copy mermaid</button>
+          <button class="preview-close" id="preview-close" aria-label="close">×</button>
+        </div>
       </header>
       <div class="preview-body" id="preview-body"></div>
     </section>
+
+    <!-- Modal for enlarged Mermaid diagrams -->
+    <div id="mermaid-modal" class="modal" hidden>
+      <div class="modal-content">
+        <header class="modal-head">
+          <span class="modal-title">Mermaid Diagram</span>
+          <button id="mermaid-modal-close" class="modal-close" aria-label="close">&times;</button>
+        </header>
+        <div id="mermaid-modal-body" class="modal-body"></div>
+      </div>
+    </div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

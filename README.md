@@ -268,6 +268,29 @@ Open **http://localhost:5173** in your browser. Try this question with the inclu
 
 Use **Ctrl+C** in each terminal to stop its process. A normal web session keeps four processes running: Ollama (unless its desktop service is already running), the Kwipu indexer/terminal, the bridge, and Vite.
 
+## Docker
+
+You can run Kwipu using Docker and Docker Compose. This is the recommended way for production-like deployments.
+
+### Running with latest UI
+
+To ensure you are running the latest version of the UI, always build the images:
+
+```bash
+docker-compose up --build
+```
+
+Access the unified interface at **http://localhost:8080**.
+
+### UI Development with Docker (HMR)
+
+If you are developing the frontend and want changes to reflect instantly, use the dev service:
+
+1. Start the main Kwipu stack: `docker-compose up kwipu`
+2. Start the UI dev server: `docker-compose up kwipu-ui-dev`
+
+Access the dev UI at **http://localhost:5173**. Changes in `frontend/src` will trigger Hot Module Replacement.
+
 ## Terminal-only use
 
 The terminal is a complete Kwipu interface, not only a background indexer. It builds or loads the graph, watches documents, accepts questions, and prints answers directly. It needs Python and Ollama, but it does **not** need FastAPI, Node.js, or a browser.

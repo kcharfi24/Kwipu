@@ -195,9 +195,25 @@ def _resolve_metadata_path(raw_path: Any) -> tuple[Path, str] | None:
     knowledge_root = KNOWLEDGE_PATH.resolve(strict=False)
     try:
         relative = resolved.relative_to(knowledge_root)
+        return resolved, relative.as_posix()
     except ValueError:
-        return None
-    return resolved, relative.as_posix()
+        pass
+
+    # If the file was indexed under a previous root directory or container mount,
+    # find the relative knowledge_base subpath and check if it exists in current KNOWLEDGE_PATH.
+    norm_parts = candidate.parts
+    if "knowledge_base" in norm_parts:
+        idx = norm_parts.index("knowledge_base")
+        subpath = Path(*norm_parts[idx + 1 :])
+        relocated = (knowledge_root / subpath).resolve(strict=False)
+        try:
+            relative = relocated.relative_to(knowledge_root)
+            if relocated.exists():
+                return relocated, relative.as_posix()
+        except ValueError:
+            pass
+
+    return None
 
 
 def _public_storage_path() -> str:

@@ -41,6 +41,9 @@ desktop.ini
 # Hash cache (generated)
 .file_hashes.json
 
+# Agent/IDE artifacts
+.artifacts/
+
 # User knowledge base (keep examples only)
 knowledge_base/*
 !knowledge_base/examples/
