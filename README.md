@@ -527,6 +527,25 @@ The main bridge endpoints are:
 
 Source expansion reads UTF-8 Markdown/text directly and extracts PDF/DOCX text without invoking an LLM. Oversized input returns `413`; unsupported formats return `415`; invalid UTF-8 or failed structured extraction returns `422`; transient source I/O returns `503`.
 
+## Performance Tuning
+
+### Query length optimization
+
+The `KWIPU_QUERY_MAX_LENGTH` setting limits the length of questions to prevent excessive latency or out-of-memory errors on smaller hardware. You can use the benchmarking tool to find the optimal value for your machine and models:
+
+```bash
+# Standard benchmark (3 trials per length, sequential)
+python scripts/benchmark_query_length.py
+
+# Stress test (concurrent requests)
+python scripts/benchmark_query_length.py --concurrency 3 --trials 9
+
+# Full report with automatic update
+python scripts/benchmark_query_length.py --max-test 16000 --apply
+```
+
+This script performs multiple trials, calculates statistical distribution (Avg, P95, Min/Max), and tests concurrency to ensure your system remains stable under load. It recommends a value based on a configurable latency threshold (default 5000ms P95).
+
 ## Troubleshooting
 
 | Symptom | What to check |
