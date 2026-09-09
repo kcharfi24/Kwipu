@@ -76,6 +76,7 @@ from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.ollama import OllamaEmbedding
 
 from kwipu_config import (
+    EXCLUDE_PATTERNS,
     EMBED_MODEL,
     HASH_CACHE_FILE,
     KNOWLEDGE_DIR,
@@ -1192,8 +1193,21 @@ class WritHerGraphRAG:
         safe_print(f"Scanning documents in '{KNOWLEDGE_DIR}'...")
 
         try:
+            def _file_extractor_filter(file_path_str: str) -> bool:
+                p = Path(file_path_str)
+                parts_lower = [part.lower() for part in p.parts]
+                name_lower = p.name.lower()
+                for pattern in EXCLUDE_PATTERNS:
+                    pat_lower = pattern.lower()
+                    if pat_lower in parts_lower or pat_lower in name_lower:
+                        return True  # True means exclude in SimpleDirectoryReader
+                return False
+
             reader = SimpleDirectoryReader(
-                KNOWLEDGE_DIR, recursive=True, filename_as_id=True
+                KNOWLEDGE_DIR,
+                recursive=True,
+                filename_as_id=True,
+                exclude=_file_extractor_filter,
             )
             documents = reader.load_data()
         except ValueError:
@@ -1548,8 +1562,12 @@ class FileWatcher(FileSystemEventHandler):
 
     def _is_relevant_file(self, path):
         p = Path(path)
-        if ".obsidian" in p.parts:
-            return False
+        parts_lower = [part.lower() for part in p.parts]
+        name_lower = p.name.lower()
+        for pattern in EXCLUDE_PATTERNS:
+            pat_lower = pattern.lower()
+            if pat_lower in parts_lower or pat_lower in name_lower:
+                return False
         return p.suffix.lower() in WATCHER_VALID_EXTENSIONS
 
     def _collect_changed_events(

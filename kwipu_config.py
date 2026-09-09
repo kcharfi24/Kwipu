@@ -121,6 +121,13 @@ def _positive_int(env_name: str, default: int) -> int:
     return value
 
 
+
+def _csv_list(env_name: str, defaults: tuple[str, ...] = ()) -> list[str]:
+    raw = _env_value(env_name)
+    if raw is None:
+        return list(defaults)
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
 def _env_flag(env_name: str) -> bool:
     raw = _env_value(env_name)
     return raw is not None and raw.lower() in {"1", "true", "yes", "on"}
@@ -183,3 +190,5 @@ OLLAMA_TIMEOUT = _positive_float("KWIPU_OLLAMA_TIMEOUT", 300.0)
 STORAGE_LOCK_TIMEOUT = _positive_float("KWIPU_STORAGE_LOCK_TIMEOUT", 30.0)
 QUERY_MAX_LENGTH = _positive_int("KWIPU_QUERY_MAX_LENGTH", 4000)
 MAX_SOURCE_BYTES = _positive_int("KWIPU_MAX_SOURCE_BYTES", 10 * 1024 * 1024)
+
+EXCLUDE_PATTERNS = _csv_list("KWIPU_EXCLUDE_PATTERNS", ("examples", "dummy", "test_fixtures", ".obsidian"))
