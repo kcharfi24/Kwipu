@@ -5,6 +5,7 @@ import RuntimeForceGraph3D, {
   type NodeObject,
 } from "3d-force-graph";
 import * as THREE from "three";
+import { palette } from "./palette";
 import {
   SCHEMA_VERSION,
   type ApiErrorResponse,
@@ -18,6 +19,7 @@ import {
   type SnapshotResponse,
   type SnapshotStats,
 } from "./types";
+import { marked } from "marked";
 
 type ForceGraph3DConstructor = {
   new <
@@ -38,33 +40,7 @@ const ICON_COPY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const ICON_CODE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`;
 const ICON_EXPAND = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
 const ICON_CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-
-// Golden Angle (137.50776405003785 deg) constant for maximum perceptual chromatic distinction
-const GOLDEN_ANGLE = 137.50776405003785;
-
-// Hash string deterministically into a positive 32-bit integer
-function stringHash(str: string): number {
-  let hash = 2166136261;
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-// Convert HSL to Hex color string
-function hslToHex(h: number, s: number, l: number): string {
-  l /= 100;
-  const a = (s * Math.min(l, 1 - l)) / 100;
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, "0");
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
+const ICON_SHARE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>`;
 
 // Dynamic, deterministic, infinite color generator for any category & cluster
 export function getDynamicCategoryColor(category: string, theme: Theme = currentTheme): string {
@@ -75,15 +51,7 @@ export function getDynamicCategoryColor(category: string, theme: Theme = current
     return theme === "dark" ? "#94a3b8" : "#475569";
   }
 
-  const hash = stringHash(category.toLowerCase().trim());
-  const hue = Math.round((hash * GOLDEN_ANGLE) % 360);
-
-  // In dark mode: vibrant, glowing pastel-rich colors (high saturation, medium-high lightness)
-  // In light mode: deep, rich, accessible high-contrast colors (solid saturation, darker lightness)
-  const saturation = theme === "dark" ? 85 : 80;
-  const lightness = theme === "dark" ? 62 : 40;
-
-  return hslToHex(hue, saturation, lightness);
+  return palette.getColor(category, theme);
 }
 
 export const THEME_PALETTES = {
@@ -283,6 +251,48 @@ const elPreviewTitle = requireElement<HTMLElement>("#preview-title");
 const elPreviewBody = requireElement<HTMLElement>("#preview-body");
 const elPreviewClose = requireElement<HTMLButtonElement>("#preview-close");
 const elPreviewCopyMermaid = requireElement<HTMLButtonElement>("#preview-copy-mermaid");
+const elPreviewHandle = requireElement<HTMLElement>("#preview-handle");
+
+// Resize logic for Preview Panel
+let isResizing = false;
+const MIN_PREVIEW_WIDTH = 420;
+const SIDEBAR_WIDTH = 320;
+const MARGIN = 18;
+
+function getSafePreviewWidth(requestedWidth: number): number {
+  const maxWidth = window.innerWidth - SIDEBAR_WIDTH - (MARGIN * 2);
+  return Math.min(maxWidth, Math.max(MIN_PREVIEW_WIDTH, requestedWidth));
+}
+
+const storedWidth = localStorage.getItem("kwipu-preview-width");
+if (storedWidth) {
+  elPreview.style.width = `${getSafePreviewWidth(parseInt(storedWidth))}px`;
+}
+
+elPreviewHandle.addEventListener("mousedown", (e) => {
+  isResizing = true;
+  elPreviewHandle.classList.add("active");
+  document.body.style.cursor = "ew-resize";
+  e.preventDefault();
+});
+
+window.addEventListener("mousemove", (e) => {
+  if (!isResizing) return;
+  // Calculate new width: window width - mouse X - right margin
+  const requestedWidth = window.innerWidth - e.clientX - MARGIN;
+  const safeWidth = getSafePreviewWidth(requestedWidth);
+
+  elPreview.style.width = `${safeWidth}px`;
+  localStorage.setItem("kwipu-preview-width", String(safeWidth));
+});
+
+window.addEventListener("mouseup", () => {
+  if (isResizing) {
+    isResizing = false;
+    elPreviewHandle.classList.remove("active");
+    document.body.style.cursor = "";
+  }
+});
 
 const elMermaidModal = requireElement<HTMLElement>("#mermaid-modal");
 const elMermaidModalClose = requireElement<HTMLButtonElement>("#mermaid-modal-close");
@@ -779,6 +789,13 @@ async function loadGraph() {
     );
     if (requestGeneration !== graphRequestGeneration) return;
     currentSnapshot = snapshot;
+
+    // Batch optimize palette for all categories in this snapshot
+    const categories = snapshot.nodes
+      .map(n => getNodeCategory(n))
+      .filter(c => c !== "Chunk" && c !== "Default");
+    palette.assign(categories);
+
     Graph.graphData({ nodes: snapshot.nodes, links: snapshot.links });
     visibleNodeIds = new Set(snapshot.nodes.map((node) => node.id));
     sceneCounts = { nodes: snapshot.nodes.length, links: snapshot.links.length };
@@ -975,7 +992,7 @@ elClearHighlight.addEventListener("click", clearHighlight);
 elPreviewClose.addEventListener("click", closePreview);
 
 // ponytail: Clean Mermaid flowchart generator
-function exportSubGraphToMermaid(nodeIds: Set<string> | null): string {
+function exportSubGraphToMermaid(nodeIds: Set<string> | null, focusNodeId?: string): string {
   if (!currentSnapshot) return "%% Graph snapshot is not loaded yet %%";
   const nodes = currentSnapshot.nodes.filter(
     (n) => nodeIds === null || nodeIds.has(n.id),
@@ -987,25 +1004,45 @@ function exportSubGraphToMermaid(nodeIds: Set<string> | null): string {
     (l) => keptIds.has(l.source) && keptIds.has(l.target),
   );
 
-  const sanitizeId = (id: string) => `n_${id.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+  // robust sanitization: Map IDs to safe short identifiers
+  const idMap = new Map<string, string>();
+  let idCounter = 0;
+  const getSid = (id: string) => {
+    let sid = idMap.get(id);
+    if (!sid) {
+      sid = `v${idCounter++}`;
+      idMap.set(id, sid);
+    }
+    return sid;
+  };
+
   const escapeLabel = (text: string) =>
     text.replace(/"/g, "'").replace(/[\[\]\(\)\{\}]/g, " ").trim();
 
-  const lines: string[] = ["flowchart TD"];
+  const isDark = currentTheme === "dark";
+  const lines: string[] = [
+    `%%{init: {'theme': '${isDark ? "dark" : "default"}'}}%%`,
+    "flowchart TD"
+  ];
 
   for (const node of nodes) {
-    const sid = sanitizeId(node.id);
+    const sid = getSid(node.id);
     const label = escapeLabel(node.name ?? node.file_name ?? node.id);
+    let line = "";
     if (node.type === "chunk") {
-      lines.push(`  ${sid}["📄 ${label}"]:::chunk`);
+      line = `  ${sid}["📄 ${label}"]:::chunk`;
     } else {
-      lines.push(`  ${sid}(["${label}"]):::entity`);
+      line = `  ${sid}(["${label}"]):::entity`;
     }
+    if (node.id === focusNodeId) {
+      line += ":::focus";
+    }
+    lines.push(line);
   }
 
   for (const link of links) {
-    const s = sanitizeId(link.source);
-    const t = sanitizeId(link.target);
+    const s = getSid(link.source);
+    const t = getSid(link.target);
     const lbl = escapeLabel(link.label || "");
     if (link.kind === "provenance") {
       lines.push(`  ${s} -.->|${lbl}| ${t}`);
@@ -1018,6 +1055,7 @@ function exportSubGraphToMermaid(nodeIds: Set<string> | null): string {
 
   lines.push("  classDef chunk fill:#1e293b,stroke:#64748b,stroke-width:1px,color:#f8fafc;");
   lines.push("  classDef entity fill:#0f172a,stroke:#38bdf8,stroke-width:1.5px,color:#ffffff;");
+  lines.push("  classDef focus stroke:#38bdf8,stroke-width:3px;");
 
   return lines.join("\n");
 }
@@ -1041,14 +1079,14 @@ async function copyToClipboard(text: string, button: HTMLElement, originalConten
 elCopyQueryMermaid.addEventListener("click", () => {
   if (!lastQueryVisibility || lastQueryVisibility.citedNodeIds.length === 0) {
     const code = exportSubGraphToMermaid(visibleNodeIds.size > 0 ? visibleNodeIds : null);
-    void copyToClipboard(code, elCopyQueryMermaid, "export mermaid");
+    void copyToClipboard(code, elCopyQueryMermaid, "export subgraph");
   } else {
     const focusIds = new Set([
       ...lastQueryVisibility.citedNodeIds,
       ...lastQueryVisibility.highlightNodeIds,
     ]);
     const code = exportSubGraphToMermaid(focusIds);
-    void copyToClipboard(code, elCopyQueryMermaid, "export mermaid");
+    void copyToClipboard(code, elCopyQueryMermaid, "export subgraph");
   }
 });
 
@@ -1061,8 +1099,8 @@ elPreviewCopyMermaid.addEventListener("click", () => {
       if (link.target === currentPreviewNode.id) relatedIds.add(link.source);
     }
   }
-  const code = exportSubGraphToMermaid(relatedIds);
-  void copyToClipboard(code, elPreviewCopyMermaid, "copy mermaid");
+  const code = exportSubGraphToMermaid(relatedIds, currentPreviewNode.id);
+  void copyToClipboard(code, elPreviewCopyMermaid, ICON_SHARE);
 });
 
 // Deep Mermaid syntax cleaner, corrector, and normalizer
@@ -1303,7 +1341,14 @@ elMermaidModal.addEventListener("click", (e) => {
 
 async function openPreview(node: GraphNode) {
   currentPreviewNode = node;
-  elPreviewCopyMermaid.style.display = "inline-block";
+
+  // Show copy links button ONLY if node has relationships in current snapshot
+  const hasLinks = currentSnapshot?.links.some(
+    (l) => l.source === node.id || l.target === node.id,
+  );
+  elPreviewCopyMermaid.innerHTML = ICON_SHARE;
+  elPreviewCopyMermaid.style.display = hasLinks ? "inline-flex" : "none";
+
   const requestGeneration = ++previewRequestGeneration;
   previewAbortController?.abort();
   const controller = new AbortController();
@@ -1383,9 +1428,65 @@ function unescapeHtml(value: string): string {
   return doc.documentElement.textContent || value;
 }
 
+// Configure marked with Kwipu extensions
+marked.use({
+  gfm: true,
+  breaks: true,
+});
+
+// Wikilink Extension: [[Target|Label]]
+const wikilinkExtension = {
+  name: "wikilink",
+  level: "inline" as const,
+  start(src: string) {
+    return src.indexOf("[[");
+  },
+  tokenizer(src: string) {
+    const rule = /^\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/;
+    const match = rule.exec(src);
+    if (match) {
+      return {
+        type: "wikilink",
+        raw: match[0],
+        target: match[1],
+        label: match[2] || match[1],
+      };
+    }
+    return undefined;
+  },
+  renderer(token: any) {
+    return `<a href="#" class="wikilink" data-target="${escapeHtml(token.target)}">${escapeHtml(token.label)}</a>`;
+  },
+};
+
+marked.use({
+  extensions: [wikilinkExtension],
+  renderer: {
+    code(token: any) {
+      if (token.lang === "mermaid") {
+        const code = token.text.trim();
+        return `
+          <div class="mermaid-diagram" data-mermaid-code="${escapeHtml(code)}">
+            <div class="mermaid-diagram-head">
+              <span>Mermaid Diagram</span>
+              <div class="mermaid-actions">
+                <button class="link-btn expand-mermaid-btn" title="Expand Diagram">${ICON_EXPAND}</button>
+                <button class="link-btn toggle-mermaid-btn" title="Show/Hide Code">${ICON_CODE}</button>
+                <button class="link-btn copy-mermaid-btn" title="Copy Mermaid Code" data-code="${escapeHtml(code)}">${ICON_COPY}</button>
+              </div>
+            </div>
+            <div class="mermaid-svg-container" style="display:none;"></div>
+            <pre class="mermaid-raw"><code>${escapeHtml(code)}</code></pre>
+          </div>`;
+      }
+      return false; // Return false to use default renderer
+    },
+  },
+});
+
 function renderMarkdownBlock(source: string): string {
-  let html = escapeHtml(source);
-  html = html.replace(/^---\n([\s\S]*?)\n---\n?/, (_, yaml: string) => {
+  let yamlHtml = "";
+  const content = source.replace(/^---\n([\s\S]*?)\n---\n?/, (_, yaml: string) => {
     const rows = yaml
       .split("\n")
       .filter(Boolean)
@@ -1399,42 +1500,12 @@ function renderMarkdownBlock(source: string): string {
         return `<div>${line}</div>`;
       })
       .join("");
-    return `<div class="preview-meta" style="margin: 0 0 14px; border-top:none; padding-top:0; border-bottom: 1px solid var(--line); padding-bottom: 10px;">${rows}</div>`;
+    yamlHtml = `<div class="preview-meta" style="margin: 0 0 14px; border-top:none; padding-top:0; border-bottom: 1px solid var(--line); padding-bottom: 10px;">${rows}</div>`;
+    return "";
   });
 
-  html = html.replace(/```\s*mermaid\s*\n?([\s\S]*?)```/gi, (_, code: string) => {
-    const trimmed = code.trim();
-    return `
-      <div class="mermaid-diagram" data-mermaid-code="${escapeHtml(trimmed)}">
-        <div class="mermaid-diagram-head">
-          <span>Mermaid Diagram</span>
-          <div class="mermaid-actions">
-            <button class="link-btn expand-mermaid-btn" title="Expand Diagram">${ICON_EXPAND}</button>
-            <button class="link-btn toggle-mermaid-btn" title="Show/Hide Code">${ICON_CODE}</button>
-            <button class="link-btn copy-mermaid-btn" title="Copy Mermaid Code" data-code="${escapeHtml(trimmed)}">${ICON_COPY}</button>
-          </div>
-        </div>
-        <div class="mermaid-svg-container" style="display:none;"></div>
-        <pre class="mermaid-raw"><code>${trimmed}</code></pre>
-      </div>`;
-  });
-
-  html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
-  html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
-  html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
-  html = html.replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>");
-  html = html.replace(/```([\s\S]*?)```/g, (_, code: string) => `<pre>${code}</pre>`);
-  html = html.replace(/`([^`\n]+)`/g, "<code>$1</code>");
-  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  html = html.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<em>$1</em>");
-  html = html.replace(
-    /\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g,
-    (_, target: string, label: string) => {
-      return `<a href="#" class="wikilink" data-target="${target}">${label || target}</a>`;
-    },
-  );
-  html = html.replace(/\n\n/g, "</p><p>");
-  return `<p>${html}</p>`;
+  const html = marked.parse(content) as string;
+  return yamlHtml + html;
 }
 
 elReload.addEventListener("click", loadGraph);

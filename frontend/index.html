@@ -30,7 +30,7 @@
       <section class="answer" id="answer-box" hidden>
         <div class="answer-head">
           <div class="answer-label">Answer</div>
-          <button id="copy-query-mermaid" class="link-btn" title="Copy active query subgraph as Mermaid diagram">export mermaid</button>
+          <button id="copy-query-mermaid" class="link-btn" title="Copy active query subgraph as Mermaid diagram">export subgraph</button>
         </div>
         <div id="answer" class="answer-text"></div>
         <div id="cited" class="cited"></div>
@@ -76,13 +76,14 @@
     <div class="scene-meta" id="scene-meta"></div>
 
     <section class="preview" id="preview" hidden>
+      <div id="preview-handle" class="preview-handle"></div>
       <header class="preview-head">
         <div>
           <div class="preview-label">Source</div>
           <div class="preview-title" id="preview-title"></div>
         </div>
         <div class="preview-actions">
-          <button class="link-btn" id="preview-copy-mermaid" title="Copy document relationships as Mermaid" style="display:none;">copy mermaid</button>
+          <button class="link-btn" id="preview-copy-mermaid" title="Copy document relationships as Mermaid" style="display:none;"></button>
           <button class="preview-close" id="preview-close" aria-label="close">×</button>
         </div>
       </header>

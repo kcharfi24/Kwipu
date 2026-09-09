@@ -10,10 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "3d-force-graph": "1.80.0"
+    "3d-force-graph": "1.80.0",
+    "chroma-js": "3.2.0",
+    "marked": "^15.0.0"
   },
   "devDependencies": {
-    "@types/three": "^0.185.4",
+    "@types/chroma-js": "3.1.2",
+    "@types/three": "0.185.4",
     "typescript": "5.9.3",
     "vite": "6.4.3"
   }

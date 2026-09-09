@@ -8,4 +8,5 @@ node_modules
 frontend/node_modules
 frontend/dist
 .DS_Store
-*.lock
+# Ensure package-lock.json is NOT ignored so 'npm ci' works in Docker
+# *.lock

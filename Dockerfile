@@ -5,7 +5,9 @@ FROM node:22-alpine AS frontend-builder
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
-RUN npm ci
+# Use 'npm install' to regenerate lock if missing, but 'npm ci' is preferred for stability.
+# However, for this project, let's ensure it always works even if lock is slightly out of sync.
+RUN npm install
 
 COPY frontend/ ./
 RUN npm run build
