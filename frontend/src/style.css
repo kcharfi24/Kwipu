@@ -691,6 +691,13 @@ button#reload:hover { border-color: var(--fg); color: var(--fg); }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
+}
+.modal-head-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 .modal-title {
   font-family: var(--font-mono);
@@ -698,6 +705,42 @@ button#reload:hover { border-color: var(--fg); color: var(--fg); }
   color: var(--fg-mute);
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+.modal-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+.zoom-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 2px 8px;
+  min-width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.zoom-btn:hover {
+  background: var(--surface-mute);
+  color: var(--fg);
+}
+.zoom-level {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-mute);
+  min-width: 44px;
+  text-align: center;
+  user-select: none;
 }
 .modal-close {
   background: transparent;
@@ -715,11 +758,29 @@ button#reload:hover { border-color: var(--fg); color: var(--fg); }
   padding: 20px;
   overflow: auto;
   flex: 1;
+  position: relative;
 }
-.modal-body svg {
-  width: 100%;
-  height: auto;
+.modal-panzoom-container {
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+.modal-panzoom-container:active {
+  cursor: grabbing;
+}
+.modal-panzoom-content {
+  transform-origin: 0 0;
+  display: inline-block;
+  will-change: transform;
+}
+.modal-panzoom-content svg {
   display: block;
+  max-width: none !important;
+  height: auto;
 }
 
 .preview-body table {

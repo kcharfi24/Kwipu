@@ -94,10 +94,18 @@
     <div id="mermaid-modal" class="modal" hidden>
       <div class="modal-content">
         <header class="modal-head">
-          <span class="modal-title">Mermaid Diagram</span>
+          <div class="modal-head-left">
+            <span class="modal-title">Mermaid Diagram</span>
+            <div class="modal-zoom-controls">
+              <button id="mermaid-zoom-out" class="link-btn zoom-btn" title="Zoom Out (or scroll wheel)">-</button>
+              <span id="mermaid-zoom-level" class="zoom-level">100%</span>
+              <button id="mermaid-zoom-in" class="link-btn zoom-btn" title="Zoom In (or scroll wheel)">+</button>
+              <button id="mermaid-zoom-reset" class="link-btn zoom-btn" title="Reset Zoom">Reset</button>
+            </div>
+          </div>
           <button id="mermaid-modal-close" class="modal-close" aria-label="close">&times;</button>
         </header>
-        <div id="mermaid-modal-body" class="modal-body"></div>
+        <div id="mermaid-modal-body" class="modal-body modal-panzoom-container"></div>
       </div>
     </div>
 

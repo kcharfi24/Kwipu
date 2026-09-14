@@ -297,6 +297,10 @@ window.addEventListener("mouseup", () => {
 const elMermaidModal = requireElement<HTMLElement>("#mermaid-modal");
 const elMermaidModalClose = requireElement<HTMLButtonElement>("#mermaid-modal-close");
 const elMermaidModalBody = requireElement<HTMLElement>("#mermaid-modal-body");
+const elMermaidZoomIn = requireElement<HTMLButtonElement>("#mermaid-zoom-in");
+const elMermaidZoomOut = requireElement<HTMLButtonElement>("#mermaid-zoom-out");
+const elMermaidZoomReset = requireElement<HTMLButtonElement>("#mermaid-zoom-reset");
+const elMermaidZoomLevel = requireElement<HTMLElement>("#mermaid-zoom-level");
 
 let currentSnapshot: SnapshotResponse | null = null;
 let currentPreviewNode: GraphNode | null = null;
@@ -1310,8 +1314,75 @@ async function renderMermaidBlocksIn(container: HTMLElement) {
   }
 }
 
+let mermaidModalScale = 1;
+let mermaidModalTranslateX = 0;
+let mermaidModalTranslateY = 0;
+let isMermaidModalPanning = false;
+let mermaidModalStartX = 0;
+let mermaidModalStartY = 0;
+
+function updateMermaidModalTransform() {
+  const container = elMermaidModalBody.querySelector<HTMLElement>(".mermaid-svg-container");
+  if (container) {
+    container.style.transform = `translate(${mermaidModalTranslateX}px, ${mermaidModalTranslateY}px) scale(${mermaidModalScale})`;
+  }
+  elMermaidZoomLevel.textContent = `${Math.round(mermaidModalScale * 100)}%`;
+}
+
+function resetMermaidModalZoom() {
+  mermaidModalScale = 1;
+  mermaidModalTranslateX = 0;
+  mermaidModalTranslateY = 0;
+  updateMermaidModalTransform();
+}
+
+function zoomMermaidModal(factor: number, centerX?: number, centerY?: number) {
+  const prevScale = mermaidModalScale;
+  const newScale = Math.min(Math.max(mermaidModalScale * factor, 0.2), 5);
+  if (newScale === prevScale) return;
+
+  if (centerX !== undefined && centerY !== undefined) {
+    const rect = elMermaidModalBody.getBoundingClientRect();
+    const offsetX = centerX - rect.left;
+    const offsetY = centerY - rect.top;
+    mermaidModalTranslateX = offsetX - ((offsetX - mermaidModalTranslateX) / prevScale) * newScale;
+    mermaidModalTranslateY = offsetY - ((offsetY - mermaidModalTranslateY) / prevScale) * newScale;
+  }
+  mermaidModalScale = newScale;
+  updateMermaidModalTransform();
+}
+
+elMermaidZoomIn.addEventListener("click", () => zoomMermaidModal(1.25));
+elMermaidZoomOut.addEventListener("click", () => zoomMermaidModal(0.8));
+elMermaidZoomReset.addEventListener("click", () => resetMermaidModalZoom());
+
+elMermaidModalBody.addEventListener("wheel", (e: WheelEvent) => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.15 : 0.85;
+  zoomMermaidModal(factor, e.clientX, e.clientY);
+}, { passive: false });
+
+elMermaidModalBody.addEventListener("mousedown", (e: MouseEvent) => {
+  if (e.button !== 0) return; // Only left click
+  isMermaidModalPanning = true;
+  mermaidModalStartX = e.clientX - mermaidModalTranslateX;
+  mermaidModalStartY = e.clientY - mermaidModalTranslateY;
+});
+
+window.addEventListener("mousemove", (e: MouseEvent) => {
+  if (!isMermaidModalPanning) return;
+  mermaidModalTranslateX = e.clientX - mermaidModalStartX;
+  mermaidModalTranslateY = e.clientY - mermaidModalStartY;
+  updateMermaidModalTransform();
+});
+
+window.addEventListener("mouseup", () => {
+  isMermaidModalPanning = false;
+});
+
 async function openMermaidModal(code: string) {
-  elMermaidModalBody.innerHTML = `<div class="mermaid-svg-container"></div>`;
+  resetMermaidModalZoom();
+  elMermaidModalBody.innerHTML = `<div class="mermaid-svg-container modal-panzoom-content"></div>`;
   elMermaidModal.hidden = false;
   const container = elMermaidModalBody.querySelector<HTMLElement>(".mermaid-svg-container")!;
   const mermaid = await getMermaid();

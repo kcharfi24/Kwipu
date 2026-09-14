@@ -1207,7 +1207,7 @@ class WritHerGraphRAG:
                 KNOWLEDGE_DIR,
                 recursive=True,
                 filename_as_id=True,
-                exclude=_file_extractor_filter,
+                exclude=EXCLUDE_PATTERNS,
             )
             documents = reader.load_data()
         except ValueError:
